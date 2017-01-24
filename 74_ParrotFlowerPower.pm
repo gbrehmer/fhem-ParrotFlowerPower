@@ -1,6 +1,7 @@
 ###############################################################################
 # 
-# Developed with Kate
+#  Original Code by: Leon Gaultier
+#  Modifications by: Achim Winkler
 #
 #  (c) 2016-2017 Copyright: Marko Oldenburg (leongaultier at gmail dot com)
 #  All rights reserved
@@ -35,7 +36,7 @@ use POSIX;
 use JSON;
 use Blocking;
 
-my $version = "0.6.2";
+my $version = "0.0.1";
 
 
 
