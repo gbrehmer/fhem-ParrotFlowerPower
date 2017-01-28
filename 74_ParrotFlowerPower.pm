@@ -32,7 +32,6 @@ use strict;
 use warnings;
 use POSIX;
 
-use JSON;
 use Blocking;
 
 my $version = "0.0.1";
@@ -51,8 +50,6 @@ sub ParrotFlowerPower_Set($$@);
 sub ParrotFlowerPower_Run($);
 sub ParrotFlowerPower_BlockingRun($);
 sub ParrotFlowerPower_callGatttool($$);
-sub ParrotFlowerPower_forRun_encodeJSON($);
-sub ParrotFlowerPower_forDone_encodeJSON($$$$$$$$$);
 sub ParrotFlowerPower_BlockingDone($);
 sub ParrotFlowerPower_BlockingAborted($);
 
@@ -180,10 +177,7 @@ sub ParrotFlowerPower_stateRequest($) {
 
 
     if ( !IsDisabled($name) ) {
-        readingsSingleUpdate ( $hash, "state", "active", 1 ) if ( (ReadingsVal($name, "state", 0) eq "initialized" or
-                                                                   ReadingsVal($name, "state", 0) eq "unreachable" or
-                                                                   ReadingsVal($name, "state", 0) eq "disabled" or 
-                                                                   ReadingsVal($name, "state", 0) eq "Unknown") );
+        readingsSingleUpdate ( $hash, "state", "active", 1 );
 
         ParrotFlowerPower_Run( $hash );
     } else {
@@ -201,10 +195,7 @@ sub ParrotFlowerPower_stateRequestTimer($) {
     RemoveInternalTimer($hash);
 
     if ( !IsDisabled($name) ) {
-        readingsSingleUpdate ( $hash, "state", "active", 1 ) if ( (ReadingsVal($name, "state", 0) eq "initialized" or
-                                                                   ReadingsVal($name, "state", 0) eq "unreachable" or
-                                                                   ReadingsVal($name, "state", 0) eq "disabled" or 
-                                                                   ReadingsVal($name, "state", 0) eq "Unknown") );
+        readingsSingleUpdate ( $hash, "state", "active", 1 );
 
         ParrotFlowerPower_Run( $hash );
     } else {
@@ -219,7 +210,6 @@ sub ParrotFlowerPower_stateRequestTimer($) {
 sub ParrotFlowerPower_Set($$@) {
     my ($hash, $name, @aa)  = @_;
     my ($cmd, $arg)         = @aa;
-    my $action;
 
     
     if ( $cmd eq 'statusRequest' ) {
@@ -238,30 +228,30 @@ sub ParrotFlowerPower_Run($) {
     my $mac     = $hash->{BTMAC};
 
     
-    BlockingKill( $hash->{helper}{RUNNING_PID} ) if ( defined($hash->{helper}{RUNNING_PID}) );
-
-    Log3 $name, 4, "Sub ParrotFlowerPower_Run ($name) - start blocking call";
+    if ( not exists($hash->{helper}{RUNNING_PID}) ) {
+        Log3 $name, 4, "Sub ParrotFlowerPower_Run ($name) - start blocking call";
     
-    $hash->{helper}{RUNNING_PID} = BlockingCall( "ParrotFlowerPower_BlockingRun", $name."|".ParrotFlowerPower_forRun_encodeJSON( $mac ), 
-                                                 "ParrotFlowerPower_BlockingDone", 120, 
-                                                 "ParrotFlowerPower_BlockingAborted", $hash ) unless( exists($hash->{helper}{RUNNING_PID}) );
+        readingsSingleUpdate ( $hash, "state", "read data", 1 );
     
-    readingsSingleUpdate ( $hash, "state", "read data", 1 ) if ( ReadingsVal( $name, "state", 0 ) eq "active" );
+        $hash->{helper}{RUNNING_PID} = BlockingCall( "ParrotFlowerPower_BlockingRun", $name."|".$mac, 
+                                                     "ParrotFlowerPower_BlockingDone", 120, 
+                                                     "ParrotFlowerPower_BlockingAborted", $hash );
+    } else {
+        Log3 $name, 4, "Sub ParrotFlowerPower_Run ($name) - blocking call already running";    
+    }
 }
 
 sub ParrotFlowerPower_BlockingRun($) {
     my ($string)        = @_;
-    my ($name,$data)    = split("\\|", $string);
-    my $data_json       = decode_json($data);
-    my $mac             = $data_json->{mac};
+    my ($name, $mac)    = split("\\|", $string);
+    
 
-
-    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - Running nonBlocking";
+    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - read data from sensor";
 
     ##### read sensor data
     my $result = ParrotFlowerPower_callGatttool( $name, $mac );
 
-    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - encoded json: $result";
+    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - read data finished: $result";
 
     return "$name|$result";
 }
@@ -269,180 +259,164 @@ sub ParrotFlowerPower_BlockingRun($) {
 sub ParrotFlowerPower_callGatttool($$) {
     my ($name, $mac)        = @_;
     my $loop                = 0;
-    my $deviceName;
-    my $deviceColor;
+    my $deviceName          = ReadingsVal( $name, "deviceName", "" );
+    my $deviceColor         = ReadingsVal( $name, "deviceColor", "" );
     my $batteryLevel;
     my $calibSoilMoisture;
     my $calibAirTemperature;
     my $calibSunlight;
-    my $calibEA;
-    my $calibECB;
-    my $calibECPorous;
 
 
-    while ( (qx(ps ax | grep -v grep | grep -iE "gatttool|hcitool") and $loop < 10) ) {
-        Log3 $name, 4, "Sub ParrotFlowerPower ($name) - check if gattool or hcitool is running. loop: $loop";
+    while ( (qx(ps ax | grep -v grep | grep -iE "gatttool|hcitool") && $loop < 10) ) {
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
         sleep 1;
         $loop++;
     }
 
-    #### Read Sensor Data
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - run gatttool";
+    if ( $loop < 10 ) {    
+        #### Read Sensor Data
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - run gatttool";
 
-    $deviceName = convertHexToString( readSensorValue( $name, $mac, "00002a00-0000-1000-8000-00805f9b34fb" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. deviceName: $deviceName";
+        if ( "" ne $deviceName ) {
+            $deviceName = convertHexToString( readSensorValue( $name, $mac, "00002a00-0000-1000-8000-00805f9b34fb" ) );
+            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. deviceName: $deviceName";
+        } else {
+            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - deviceName already available: $deviceName";
+        }
 
-    $deviceColor = convertStringToU16( readSensorValue( $name, $mac, "39e1fe04-84a8-11e2-afba-0002a5d5c51b" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. deviceColor: $deviceColor";
+        if ( "" ne $deviceColor ) {
+            $deviceColor = convertStringToU16( readSensorValue( $name, $mac, "39e1fe04-84a8-11e2-afba-0002a5d5c51b" ) );
+            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. deviceColor: $deviceColor";
+        } else {
+            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - deviceColor already available: $deviceColor";
+        }    
+        
+        $batteryLevel = convertStringToU8( readSensorValue( $name, $mac, "00002a19-0000-1000-8000-00805f9b34fb" ) );
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. batteryLevel: $batteryLevel";
+        
+        $calibSoilMoisture = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa09-84a8-11e2-afba-0002a5d5c51b" ) );
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSoilMoisture: $calibSoilMoisture";
+        
+        $calibAirTemperature = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa0a-84a8-11e2-afba-0002a5d5c51b" ) );
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibAirTemperature: $calibAirTemperature";
+        
+        $calibSunlight = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) );
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSunlight: $calibSunlight";
+    } else {
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - no free slot found to start gatttool";
+    }
     
-    $batteryLevel = convertStringToU8( readSensorValue( $name, $mac, "00002a19-0000-1000-8000-00805f9b34fb" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. batteryLevel: $batteryLevel";
-    
-    $calibSoilMoisture = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa09-84a8-11e2-afba-0002a5d5c51b" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSoilMoisture: $calibSoilMoisture";
-    
-    $calibAirTemperature = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa0a-84a8-11e2-afba-0002a5d5c51b" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibAirTemperature: $calibAirTemperature";
-    
-    $calibSunlight = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSunlight: $calibSunlight";
-    
-    $calibEA = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa0c-84a8-11e2-afba-0002a5d5c51b" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibEA: $calibEA";
-    
-    $calibECB = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa0d-84a8-11e2-afba-0002a5d5c51b" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibECB: $calibECB";
-    
-    $calibECPorous = convertStringToFloat( readSensorValue( $name, $mac, "39e1fa0e-84a8-11e2-afba-0002a5d5c51b" ) );
-    Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibECPorous: $calibECPorous";
-    
-    return ParrotFlowerPower_forDone_encodeJSON( $deviceName, $deviceColor, $batteryLevel, $calibSoilMoisture, $calibAirTemperature, $calibSunlight, $calibEA, $calibECB, $calibECPorous );
+    return "$deviceName|$deviceColor|$batteryLevel|$calibSoilMoisture|$calibAirTemperature|$calibSunlight";
 }
 
 sub ParrotFlowerPower_readSensorValue($$$) {
     my ($name, $mac, $uuid ) = @_;
     my $hci = ReadingsVal( $name, "hciDevice", "hci0" );
-    my @result;
+    my $result;
     my $repeatCounter = 0;
 
     
     do {
         # try to read the value from sensor
-        @result = split( ": ", qx(gatttool -i $hci -b $mac --char-read --uuid=$uuid 2>&1) );
-        Log3 $name, 4, "Sub ParrotFlowerPower_readSensorValue ($name) - call gatttool char read loop $loop";
+        $result = qx( gatttool -i $hci -b $mac --char-read --uuid=$uuid 2>&1 );
+        Log3 $name, 4, "Sub ParrotFlowerPower_readSensorValue ($name) - call gatttool char read loop: $loop, result: $result";
         $repeatCounter++;
     }
-    while ( ($repeatCounter < 10) && ((not defined($result[0])) || (not $result[0] =~ /Characteristic value/)) );
+    while ( ($repeatCounter < 10) && (not $result =~ /handle\:.*value\:(.*)/ );
 
-    if ( defined($result[0]) && $repeatCounter < 10) {
-        # remove spaces
-        $result[2] =~ s/\s//g;
+    if ( defined($1) ) {
+        $result = $1;
         
-        Log3 $name, 4, "Sub ParrotFlowerPower_readSensorValue ($name) - processing gatttool response: $result[2]";
+        # remove spaces
+        $result =~ s/\s//g;
+        
+        Log3 $name, 4, "Sub ParrotFlowerPower_readSensorValue ($name) - processing gatttool response: $result";
 
-        return $result[2];
-    }
-    else {
+        return $result;
+    } else {
         Log3 $name, 4, "Sub ParrotFlowerPower_readSensorValue ($name) - invalid gatttool response";
         
-        # return 0 in case of an error
-        return 0;
+        # return empty string in case of an error
+        return "";
     }
 }
 
 sub ParrotFlowerPower_convertStringToFloat($) {
     $_ = shift;
 
-    # switch endianess of string
-    $_ = unpack( "H*", reverse(pack("H*", $_)) );
+    if ( "" ne $_ ) {
+        # switch endianess of string
+        $_ = unpack( "H*", reverse(pack("H*", $_)) );
 
-    # convert string to float
-    return unpack( "f", pack("L", hex($_)) );
+        # convert string to float
+        return unpack( "f", pack("L", hex($_)) );
+    } else {
+        return "";
+    }
 }
 
 sub ParrotFlowerPower_convertStringToU8($) {
     $_ = shift;
 
-    # convert string to U8
-    return hex($_);
+    if ( "" ne $_ ) {
+        # convert string to U8
+        return hex($_);
+    } else {
+        return "";
+    }
 }
 
 sub ParrotFlowerPower_convertStringToU16($) {
     $_ = shift;
 
-    # switch endianess of string
-    $_ = unpack( "H*", reverse(pack("H*", $_)) );
+    if ( "" ne $_ ) {
+        # switch endianess of string
+        $_ = unpack( "H*", reverse(pack("H*", $_)) );
 
-    # convert string to U16
-    return hex($_);
+        # convert string to U16
+        return hex($_);
+    } else {
+        return "";
+    }
 }
 
 sub ParrotFlowerPower_convertHexToString($) {
     $_ = shift;
 
-    # convert hex string into string
-    return pack( "H*", $_ );
-}
-
-sub ParrotFlowerPower_forRun_encodeJSON($) {
-    my $mac  = shift;
-
-    my %data = (
-        'mac' => $mac
-    );
-
-    return encode_json \%data;
-}
-
-sub ParrotFlowerPower_forDone_encodeJSON($$$$$$$$$) {
-
-    my ( $deviceName, $deviceColor, $batteryLevel, $calibSoilMoisture, $calibAirTemperature, $calibSunlight, $calibEA, $calibECB, $calibECPorous ) = @_;
-    my %response = (
-        'name'        => $deviceName,
-        'color'       => $deviceColor,
-        'battery'     => $batteryLevel,
-        'moisture'    => $calibSoilMoisture,
-        'temperature' => $calibAirTemperature,
-        'sunlight'    => $calibSunlight,
-        'EA'          => $calibEA,
-        'ECB'         => $calibECB,
-        'ECPorous'    => $calibECPorous
-    );
-
-    return encode_json \%response;
+    if ( "" ne $_ ) {
+        # convert hex string into string
+        return pack( "H*", $_ );
+    } else {
+        return "";
+    }
 }
 
 sub ParrotFlowerPower_BlockingDone($) {
 
     my ($string)            = @_;
-    my ( $name, $response ) = split( "\\|", $string );
+    my ( $name, $deviceName, $deviceColor, $batteryLevel, $calibSoilMoisture, $calibAirTemperature, $calibSunlight ) = split( "\\|", $string );
     my $hash                = $defs{$name};
 
 
     delete($hash->{helper}{RUNNING_PID});
 
-    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingDone ($name) - helper disabled. Abort" if ( $hash->{helper}{DISABLED} );
+    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingDone ($name) - helper disabled. abort" if ( $hash->{helper}{DISABLED} );
     return if ( $hash->{helper}{DISABLED} );
 
     readingsBeginUpdate( $hash );
 
-    my $response_json = decode_json( $response );
-
-    readingsBulkUpdate( $hash, "deviceName", $response_json->{name} );
-    readingsBulkUpdate( $hash, "deviceColor", $response_json->{color} );
-    readingsBulkUpdate( $hash, "battery", ($response_json->{battery} > 20 ? "ok" : "low") );
-    readingsBulkUpdate( $hash, "batteryLevel", $response_json->{battery} );
-    readingsBulkUpdate( $hash, "soilMoisture", $response_json->{moisture} );
-    readingsBulkUpdate( $hash, "airTemperature", $response_json->{temperature} );
-    readingsBulkUpdate( $hash, "sunlight", $response_json->{sunlight} );
-    readingsBulkUpdate( $hash, "EEA", $response_json->{EA} );
-    readingsBulkUpdate( $hash, "ECB", $response_json->{ECB} );
-    readingsBulkUpdate( $hash, "ECPorous", $response_json->{ECPorous} );
-    readingsBulkUpdate( $hash, "state", "active" ) if ( ReadingsVal($name, "state", 0) eq "read data" or ReadingsVal($name, "state", 0) eq "unreachable" );
+    readingsBulkUpdate( $hash, "deviceName", $deviceName );
+    readingsBulkUpdate( $hash, "deviceColor", $deviceColor );
+    readingsBulkUpdate( $hash, "battery", (("" eq $batteryLevel) || ($batteryLevel > 15) ? "ok" : "low" );
+    readingsBulkUpdate( $hash, "batteryLevel", $batteryLevel );
+    readingsBulkUpdate( $hash, "soilMoisture", $calibSoilMoisture );
+    readingsBulkUpdate( $hash, "airTemperature", $calibAirTemperature );
+    readingsBulkUpdate( $hash, "sunlight", $calibSunlight );
+    readingsBulkUpdate( $hash, "state", "active" );
     
     readingsEndUpdate( $hash, 1 );
 
-    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingDone ($name) - Done!";
+    Log3 $name, 4, "Sub ParrotFlowerPower_BlockingDone ($name) - done";
 }
 
 sub ParrotFlowerPower_BlockingAborted($) {
@@ -452,7 +426,7 @@ sub ParrotFlowerPower_BlockingAborted($) {
     delete( $hash->{helper}{RUNNING_PID} );
     readingsSingleUpdate( $hash, "state", "unreachable", 1);
     
-    Log3 $name, 3, "($name) Sub ParrotFlowerPower_BlockingAborted - The BlockingCall process terminated unexpectedly: Timeout";
+    Log3 $name, 3, "($name) Sub ParrotFlowerPower_BlockingAborted - BlockingCall process terminated unexpectedly: timeout";
 }
 
 1;
@@ -496,14 +470,14 @@ sub ParrotFlowerPower_BlockingAborted($) {
   <a name="ParrotFlowerPowerreadings"></a>
   <b>Readings</b>
   <ul>
-    <li>state - Status of the flower power sensor or error message if any errors.</li>
-    <li>battery - current battery state dependent on batteryLevel.</li>
-    <li>batteryLevel - current battery level in percent.</li>
-    <li>fertility - Values for the fertilizer content</li>
-    <li>firmware - current device firmware</li>
-    <li>lux - current light intensity</li>
-    <li>moisture - current moisture content</li>
-    <li>temperature - current temperature</li>
+    <li>state - status of the flower power sensor or error message if any errors.</li>
+    <li>deviceName - name of the Parrot Flower Power sensor.</li>
+    <li>deviceColor - color of the Parrot Flower Power sensor.</li>
+    <li>battery - current battery state (depends on batteryLevel).</li>
+    <li>batteryLevel - current battery level.</li>
+    <li>soilMoisture - current soil moisture.</li>
+    <li>airTemperature - current air temperature.</li>
+    <li>sunlight - current sunlight.</li>
   </ul>
   <br><br>
   <a name="ParrotFlowerPowerset"></a>
