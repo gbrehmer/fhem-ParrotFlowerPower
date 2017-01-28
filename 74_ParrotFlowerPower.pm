@@ -234,7 +234,7 @@ sub ParrotFlowerPower_Run($) {
         readingsSingleUpdate ( $hash, "state", "read data", 1 );
     
         $hash->{helper}{RUNNING_PID} = BlockingCall( "ParrotFlowerPower_BlockingRun", $name."|".$mac, 
-                                                     "ParrotFlowerPower_BlockingDone", 120, 
+                                                     "ParrotFlowerPower_BlockingDone", 60 + 120, 
                                                      "ParrotFlowerPower_BlockingAborted", $hash );
     } else {
         Log3 $name, 4, "Sub ParrotFlowerPower_Run ($name) - blocking call already running";    
@@ -267,13 +267,14 @@ sub ParrotFlowerPower_callGatttool($$) {
     my $calibSunlight;
 
 
-    while ( (qx(ps ax | grep -v grep | grep -iE "gatttool|hcitool") && $loop < 10) ) {
+    # wait up to 60s to get a free slot
+    while ( (qx(ps ax | grep -v grep | grep -iE "gatttool|hcitool") && $loop < 60) ) {
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
         sleep 1;
         $loop++;
     }
 
-    if ( $loop < 10 ) {    
+    if ( $loop < 60 ) {    
         #### Read Sensor Data
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - run gatttool";
 
