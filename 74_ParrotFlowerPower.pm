@@ -395,7 +395,7 @@ sub ParrotFlowerPower_convertHexToString($) {
 sub ParrotFlowerPower_round($) {
     $_ = shift;
     
-    return ( int((($value * 100) + 0.0005) / 100) );
+    return ( int((($_ * 100) + 0.0005) / 100) );
 }
 
 sub ParrotFlowerPower_BlockingDone($) {
