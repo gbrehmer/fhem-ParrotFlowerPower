@@ -321,7 +321,7 @@ sub ParrotFlowerPower_readSensorValue($$$) {
         # try to read the value from sensor
         $result = qx( gatttool -i $hci -b $mac --char-read --uuid=$uuid 2>&1 );
         Log3 $name, 4, "Sub ParrotFlowerPower_readSensorValue ($name) - call gatttool char read loop: $loop, result: $result";
-        $repeatCounter++;
+        $loop++;
     }
     while ( ($loop < 10) && (not $result =~ /handle\:.*value\:(.*)/) );
 
