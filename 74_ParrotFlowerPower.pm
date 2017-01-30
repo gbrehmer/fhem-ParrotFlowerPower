@@ -395,7 +395,7 @@ sub ParrotFlowerPower_convertHexToString($) {
 sub ParrotFlowerPower_round($$) {
     my ( $value, $fractionalDigits ) = @_;
     
-    return ( int((($value / 2) * 100) + 0.5) / 100);
+    return ( int((($value / $fractionalDigits) * 100) + 0.5) / 100);
 }
 
 sub ParrotFlowerPower_BlockingDone($) {
