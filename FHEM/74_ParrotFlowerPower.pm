@@ -299,10 +299,10 @@ sub ParrotFlowerPower_callGatttool($$) {
 
         if ( "" eq $deviceColor ) {
             $deviceColor = ParrotFlowerPower_convertStringToU16( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fe04-84a8-11e2-afba-0002a5d5c51b" ) );
-            $deviceColor = $colors{$deviceColor} if ( exists($colors{$deviceColor} );
+            $deviceColor = $colors{$deviceColor} if ( exists($colors{$deviceColor}) );
             Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. deviceColor: $deviceColor";
         } else {
-            $deviceColor = $colors{$deviceColor} if ( exists($colors{$deviceColor} );
+            $deviceColor = $colors{$deviceColor} if ( exists($colors{$deviceColor}) );
             Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - deviceColor already available: $deviceColor";
         }    
         
