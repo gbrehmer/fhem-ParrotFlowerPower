@@ -34,8 +34,14 @@ use POSIX;
 
 use Blocking;
 
-my $version = "0.0.1";
-
+my $version = "0.0.2";
+my %colors = ( 1 => "brown",
+               2 => "esmerald",
+               3 => "lemon",
+               4 => "gray-brown",
+               5 => "gray-green",
+               6 => "classic-green",
+               7 => "grey-blue" );
 
 
 
@@ -97,8 +103,7 @@ sub ParrotFlowerPower_Define($$) {
 
     $modules{ParrotFlowerPower}{defptr}{$hash->{BTMAC}} = $hash;
     readingsSingleUpdate( $hash, "state", "initialized", 0 );
-    $attr{$name}{room} = "ParrotFlowerPower" if( !defined($attr{$name}{room}) );
-
+    
     RemoveInternalTimer( $hash );
 
     if ( $init_done ) {
@@ -120,6 +125,7 @@ sub ParrotFlowerPower_Undef($$) {
 
 
     RemoveInternalTimer($hash);
+    BlockingKill( $hash->{helper}{RUNNING_PID} ) if ( defined($hash->{helper}{RUNNING_PID}) ); 
 
     delete( $modules{ParrotFlowerPower}{defptr}{$mac} );
     Log3 $name, 3, "Sub ParrotFlowerPower_Undef ($name) - delete device";
@@ -147,7 +153,7 @@ sub ParrotFlowerPower_Attr(@) {
 
     if ( $attrName eq "disabledForIntervals" ) {
         if ( $cmd eq "set" ) {
-            readingsSingleUpdate ( $hash, "state", "Unknown", 1 );
+            readingsSingleUpdate ( $hash, "state", "suspended", 1 );
             
             Log3 $name, 3, "ParrotFlowerPower ($name) - disabledForIntervals";
         }
@@ -160,9 +166,9 @@ sub ParrotFlowerPower_Attr(@) {
 
     if ( $attrName eq "interval" ) {
         if ( $cmd eq "set" ) {
-            if ( $attrVal < 300 ) {
-                Log3 $name, 3, "ParrotFlowerPower ($name) - interval too small, please use something >= 300 (sec), default is 3600 (sec)";
-                return "interval too small, please use something >= 300 (sec), default is 3600 (sec)";
+            if ( $attrVal < 900 ) {
+                Log3 $name, 3, "ParrotFlowerPower ($name) - interval too small, please use something >= 900 (sec), default is 3600 (sec)";
+                return "interval too small, please use something >= 900 (sec), default is 3600 (sec)";
             } else {
                 $hash->{INTERVAL} = $attrVal;
                 Log3 $name, 3, "ParrotFlowerPower ($name) - set interval to $attrVal";
@@ -293,8 +299,10 @@ sub ParrotFlowerPower_callGatttool($$) {
 
         if ( "" eq $deviceColor ) {
             $deviceColor = ParrotFlowerPower_convertStringToU16( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fe04-84a8-11e2-afba-0002a5d5c51b" ) );
+            $deviceColor = $colors{$deviceColor} if ( exists($colors{$deviceColor} );
             Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. deviceColor: $deviceColor";
         } else {
+            $deviceColor = $colors{$deviceColor} if ( exists($colors{$deviceColor} );
             Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - deviceColor already available: $deviceColor";
         }    
         
@@ -424,7 +432,7 @@ sub ParrotFlowerPower_BlockingDone($) {
     readingsBulkUpdate( $hash, "soilMoisture", $calibSoilMoisture );
     readingsBulkUpdate( $hash, "airTemperature", $calibAirTemperature );
     readingsBulkUpdate( $hash, "sunlight", $calibSunlight );
-    readingsBulkUpdate( $hash, "state", "active" );
+    readingsBulkUpdate( $hash, "state", "M: ".$calibSoilMoisture."%, T: ".$calibAirTemperature."°C, L: ".$calibSunlight."lux, B: ".$batteryLevel."%" );
     
     readingsEndUpdate( $hash, 1 );
 
@@ -503,7 +511,9 @@ sub ParrotFlowerPower_BlockingAborted($) {
   <b>Attributes</b>
   <ul>
     <li>disable - disables the Parrot Flower Power device</li>
-    <li>interval - interval in seconds for statusRequest</li>
+    <li>disabledForIntervals - disables the Parrot Flower Power device for an interval (example: 00:00-06:00)</li>
+    <li>interval - interval in seconds for statusRequest (default: 3600s)</li>
+    <li>hciDevice - bluetooth device (default: hci0)</li>
     <br>
   </ul>
 </ul>
