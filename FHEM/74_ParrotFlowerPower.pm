@@ -432,7 +432,8 @@ sub ParrotFlowerPower_BlockingDone($) {
     readingsBulkUpdate( $hash, "soilMoisture", $calibSoilMoisture );
     readingsBulkUpdate( $hash, "airTemperature", $calibAirTemperature );
     readingsBulkUpdate( $hash, "sunlight", $calibSunlight );
-    readingsBulkUpdate( $hash, "state", "M: ".$calibSoilMoisture."%, T: ".$calibAirTemperature."°C, L: ".$calibSunlight."lux, B: ".$batteryLevel."%" );
+    readingsBulkUpdate( $hash, "state", "active" );
+    #readingsBulkUpdate( $hash, "state", "M: ".$calibSoilMoisture."%, T: ".$calibAirTemperature."°C, L: ".$calibSunlight."lux, B: ".$batteryLevel."%" );
     
     readingsEndUpdate( $hash, 1 );
 
