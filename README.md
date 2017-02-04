@@ -17,7 +17,7 @@
   <b>Installation:</b>
   <ul>
     <li>be sure that bluez is installed: sudo apt-get install bluez</li>
-    <li>add the new update site: update add http://raw.githubusercontent.com/mumpitzstuff/fhem-ParrotFlowerPower/master/controls_parrotflowerpower.txt</li>
+    <li>add the new update site: update add http://<i></i>raw.githubusercontent.com/mumpitzstuff/fhem-ParrotFlowerPower/master/controls_parrotflowerpower.txt</li>
     <li>run the update and wait until finished: update all</li>
     <li>restart fhem: shutdown restart</li>
     <li>define a new device: define &lt;name of plant&gt; ParrotFlowerPower &lt;mac address of sensor e.g. AA:BB:CC:DD:EE:FF&gt;</li>
