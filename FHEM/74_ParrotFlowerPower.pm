@@ -472,20 +472,20 @@ sub ParrotFlowerPower_BlockingAborted($) {
   <u><b>ParrotFlowerPower - Retrieves data from a Parrot Flower Power Sensor</b></u>
   <br>
   With this module it is possible to read the data from a sensor and to set it as reading.</br>
-  Gatttool and hcitool is required to use this module. (apt-get install bluez)
+  Gatttool is required to use this module. (apt-get install bluez)
   <br><br>
   <a name="ParrotFlowerPowerdefine"></a>
   <b>Define</b>
   <ul><br>
-    <code>define &lt;name&gt; ParrotFlowerPower &lt;BT-MAC&gt;</code>
+    <code>define &lt;name of plant&gt; ParrotFlowerPower &lt;BT-MAC&gt;</code>
     <br><br>
     Example:
     <ul><br>
-      <code>define Weihnachtskaktus ParrotFlowerPower C4:7C:8D:62:42:6F</code><br>
+      <code>define MyPlant ParrotFlowerPower C4:7C:8D:62:42:6F</code><br>
     </ul>
     <br>
-    This statement creates a ParrotFlowerPower with the name Weihnachtskaktus and the Bluetooth Mac C4:7C:8D:62:42:6F.<br>
-    After the device has been created, the current data of the Xiaomi Flower Monitor is automatically read from the device.
+    This command creates a ParrotFlowerPower with the Bluetooth Mac C4:7C:8D:62:42:6F.<br>
+    After the device has been created, the current data of the Parrot Flower Power Sensor is automatically read.
   </ul>
   <br><br>
   <a name="ParrotFlowerPowerreadings"></a>
@@ -521,6 +521,59 @@ sub ParrotFlowerPower_BlockingAborted($) {
 
 =end html
 =begin html_DE
+
+<a name="ParrotFlowerPower"></a>
+<h3>Parrot Flower Power</h3>
+<ul>
+  <u><b>ParrotFlowerPower - Liesst Daten von einem Parrot Flower Power Sensor</b></u>
+  <br>
+  Mit diesem Modul ist es m&ouml;glich Daten von einem Sensor auszulesen und darzustellen.</br>
+  Gatttool wird f&uuml;r das Modul ben&ouml;tigt. (apt-get install bluez)
+  <br><br>
+  <a name="ParrotFlowerPowerdefine"></a>
+  <b>Define</b>
+  <ul><br>
+    <code>define &lt;Name der Pflanze&gt; ParrotFlowerPower &lt;BT-MAC&gt;</code>
+    <br><br>
+    Example:
+    <ul><br>
+      <code>define MeinePflanze ParrotFlowerPower C4:7C:8D:62:42:6F</code><br>
+    </ul>
+    <br>
+    Das Kommando erzeugt einen ParrotFlowerPower mit der Bluetooth Mac C4:7C:8D:62:42:6F.<br>
+    Nachdem das Ger&auml;t erstellt wurde, werden die Daten des Parrot Flower Power Sensors automatisch ausgelesen.
+  </ul>
+  <br><br>
+  <a name="ParrotFlowerPowerreadings"></a>
+  <b>Readings</b>
+  <ul>
+    <li>state - Status des Parrot Flower Power Sensors oder die Fehlermeldung, wenn eine vorhanden ist.</li>
+    <li>deviceName - Name des Parrot Flower Power Sensors.</li>
+    <li>deviceColor - Farbe des Parrot Flower Power Sensors.</li>
+    <li>battery - Batterie Status (h&auml;ngt ab vom batteryLevel).</li>
+    <li>batteryLevel - F&uuml;llstand der Batterie.</li>
+    <li>soilMoisture - Bodenfeuchtigkeit.</li>
+    <li>airTemperature - Lufttemperatur.</li>
+    <li>sunlight - Licht.</li>
+  </ul>
+  <br><br>
+  <a name="ParrotFlowerPowerset"></a>
+  <b>Set</b>
+  <ul>
+    <li>statusRequest - liesst den aktuellen Status des Parrot Flower Power Sensors aus.</li>
+    <br>
+  </ul>
+  <br><br>
+  <a name="ParrotFlowerPowerattribut"></a>
+  <b>Attributes</b>
+  <ul>
+    <li>disable - deaktiviert das Parrot Flower Power Ger&auml;t</li>
+    <li>disabledForIntervals - deaktiviert das Parrot Flower Power Ger&auml;t f&uuml;r eine bestimmte Zeit (Beispiel: 00:00-06:00)</li>
+    <li>interval - Intervall in Sekunden f&uuml;r den statusRequest (Voreinstellung: 3600s)</li>
+    <li>hciDevice - Bluetooth Ger&auml;t (Voreinstellung: hci0)</li>
+    <br>
+  </ul>
+</ul>
 
 =end html_DE
 =cut
