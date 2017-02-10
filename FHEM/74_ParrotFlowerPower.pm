@@ -101,12 +101,14 @@ sub ParrotFlowerPower_Define($$) {
 
     return "too few parameters: define <name> ParrotFlowerPower <BTMAC>" if ( @a != 3 );
 
-    my $name            = $a[0];
-    my $mac             = $a[2];
+    my $name                = $a[0];
+    my $mac                 = $a[2];
 
-    $hash->{BTMAC}      = $mac;
-    $hash->{VERSION}    = $version;
-    $hash->{INTERVAL}   = 3600;
+    $hash->{BTMAC}          = $mac;
+    $hash->{VERSION}        = $version;
+    $hash->{INTERVAL}       = 3600;
+    $hash->{HCIDEVICE}      = "hci0";
+    $hash->{DECIMALPLACES}  = 4;
 
     $modules{ParrotFlowerPower}{defptr}{$hash->{BTMAC}} = $hash;
     readingsSingleUpdate( $hash, "state", "initialized", 0 );
@@ -142,19 +144,18 @@ sub ParrotFlowerPower_Undef($$) {
 sub ParrotFlowerPower_Attr(@) {
     my ( $cmd, $name, $attrName, $attrVal ) = @_;
     my $hash                                = $defs{$name};
-    my $orig                                = $attrVal;
 
 
     if ( $attrName eq "disable" ) {
         if ( $cmd eq "set" and $attrVal eq "1" ) {
             readingsSingleUpdate ( $hash, "state", "disabled", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower ($name) - disabled";
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - disabled";
         }
         elsif ( $cmd eq "del" ) {
             readingsSingleUpdate ( $hash, "state", "active", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower ($name) - enabled";
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - enabled";
         }
     }
 
@@ -162,28 +163,50 @@ sub ParrotFlowerPower_Attr(@) {
         if ( $cmd eq "set" ) {
             readingsSingleUpdate ( $hash, "state", "suspended", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower ($name) - disabledForIntervals";
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - disabledForIntervals";
         }
         elsif ( $cmd eq "del" ) {
             readingsSingleUpdate ( $hash, "state", "active", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower ($name) - enabled";
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - enabled";
         }
     }
 
     if ( $attrName eq "interval" ) {
         if ( $cmd eq "set" ) {
             if ( $attrVal < 900 ) {
-                Log3 $name, 3, "ParrotFlowerPower ($name) - interval too small, please use something >= 900 (sec), default is 3600 (sec)";
+                Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - interval too small, please use something >= 900 (sec), default is 3600 (sec)";
                 return "interval too small, please use something >= 900 (sec), default is 3600 (sec)";
             } else {
                 $hash->{INTERVAL} = $attrVal;
-                Log3 $name, 3, "ParrotFlowerPower ($name) - set interval to $attrVal";
+                Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set interval to $attrVal";
             }
         }
         elsif( $cmd eq "del" ) {
             $hash->{INTERVAL} = 3600;
-            Log3 $name, 3, "ParrotFlowerPower ($name) - set interval to default";
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set interval to default";
+        }
+    }
+    
+    if ( $attrName eq "hciDevice" ) {
+        if ( $cmd eq "set" ) {
+            $hash->{HCIDEVICE} = $attrVal;
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set hciDevice to $attrVal";
+        }
+        elsif( $cmd eq "del" ) {
+            $hash->{HCIDEVICE} = "hci0";
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set hciDevice to default";
+        }
+    }
+    
+    if ( $attrName eq "decimalPlaces" ) {
+        if ( $cmd eq "set" ) {
+            $hash->{DECIMALPLACES} = $attrVal;
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set decimalPlaces to $attrVal";
+        }
+        elsif( $cmd eq "del" ) {
+            $hash->{DECIMALPLACES} = 4;
+            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set decimalPlaces to default";
         }
     }
 
@@ -280,8 +303,8 @@ sub ParrotFlowerPower_callGatttool($$) {
     my $loop                = 0;
     my $isFreeSlot          = 0;
     my $result;
-    my $hci                 = ReadingsVal( $name, "hciDevice", "hci0" );
-    my $decimalPlaces       = ReadingsVal( $name, "decimalPlaces", 4 );
+    my $hci                 = defined($hash->{HCIDEVICE}) ? $hash->{HCIDEVICE} : "hci0";
+    my $decimalPlaces       = defined($hash->{DECIMALPLACES}) ? $hash->{DECIMALPLACES} : 4;
     my $deviceName          = ReadingsVal( $name, "deviceName", "" );
     my $deviceColor         = ReadingsVal( $name, "deviceColor", "" );
     my $batteryLevel        = "";
