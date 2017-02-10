@@ -34,7 +34,7 @@ use POSIX;
 
 use Blocking;
 
-my $version = "0.0.2";
+my $version = "0.0.3";
 my %colors = ( 1 => "brown",
                2 => "esmerald",
                3 => "lemon",
@@ -61,7 +61,7 @@ sub ParrotFlowerPower_convertStringToFloat($);
 sub ParrotFlowerPower_convertStringToU8($);
 sub ParrotFlowerPower_convertStringToU16($);
 sub ParrotFlowerPower_convertHexToString($);
-sub ParrotFlowerPower_round($);
+sub ParrotFlowerPower_round($$);
 sub ParrotFlowerPower_BlockingDone($);
 sub ParrotFlowerPower_BlockingAborted($);
 
@@ -77,9 +77,16 @@ sub ParrotFlowerPower_Initialize($) {
     $hash->{UndefFn}    = "ParrotFlowerPower_Undef";
     $hash->{AttrFn}     = "ParrotFlowerPower_Attr";
     $hash->{AttrList}   = "interval ".
+                          "disabledForIntervals ".
                           "disable:1 ".
                           "hciDevice:hci0,hci1,hci2 ".
-                          "disabledForIntervals ".
+                          "decimalPlaces:1,2,3,4,5,6 ".
+                          "minSoilMoisture ".
+                          "maxSoilMoisture ".
+                          "minTemperature ".
+                          "maxTemperature ".
+                          "minSunlight ".
+                          "maxSunlight ".
                           $readingFnAttributes;
 
     foreach my $d(sort keys %{$modules{ParrotFlowerPower}{defptr}}) {
@@ -271,21 +278,35 @@ sub ParrotFlowerPower_BlockingRun($) {
 sub ParrotFlowerPower_callGatttool($$) {
     my ($name, $mac)        = @_;
     my $loop                = 0;
+    my $result;
+    my $hci                 = ReadingsVal( $name, "hciDevice", "hci0" );
+    my $decimalPlaces       = ReadingsVal( $name, "decimalPlaces", 4 );
     my $deviceName          = ReadingsVal( $name, "deviceName", "" );
     my $deviceColor         = ReadingsVal( $name, "deviceColor", "" );
-    my $batteryLevel;
-    my $calibSoilMoisture;
-    my $calibAirTemperature;
-    my $calibSunlight;
+    my $batteryLevel        = "";
+    my $calibSoilMoisture   = "";
+    my $calibAirTemperature = "";
+    my $calibSunlight       = "";
 
 
     # wait up to 60s to get a free slot
-    while ( (qx(ps ax | grep -v grep | grep -iE "gatttool|hcitool") && $loop < 60) ) {
-        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
-        sleep 1;
-        $loop++;
+    do {
+        $result = qx(ps ax | grep -v grep | grep -iE "gatttool|hcitool");
+        
+        # hci0: only hci1-9 is allowed for gatttool or hcitool
+        # hci1-9: same interface is not allowed for gatttool or hcitool
+        if ( ("" ne $result) && 
+              (("hci0" eq $hci) && (not $result =~ /\-i hci[1-9]/)) ||
+              (("hci0" ne $hci) && ($result =~ /\-i $hci/)) ) {
+            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
+            sleep 1;
+            $loop++;
+        } else {
+            break;
+        }
     }
-
+    while ( $loop < 60 );
+    
     if ( $loop < 60 ) {    
         #### Read Sensor Data
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - run gatttool";
@@ -309,13 +330,13 @@ sub ParrotFlowerPower_callGatttool($$) {
         $batteryLevel = ParrotFlowerPower_convertStringToU8( ParrotFlowerPower_readSensorValue( $name, $mac, "00002a19-0000-1000-8000-00805f9b34fb" ) );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. batteryLevel: $batteryLevel";
         
-        $calibSoilMoisture = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa09-84a8-11e2-afba-0002a5d5c51b" ) ) );
+        $calibSoilMoisture = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa09-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSoilMoisture: $calibSoilMoisture";
         
-        $calibAirTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0a-84a8-11e2-afba-0002a5d5c51b" ) ) );
+        $calibAirTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0a-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibAirTemperature: $calibAirTemperature";
         
-        $calibSunlight = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) ) );
+        $calibSunlight = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSunlight: $calibSunlight";
     } else {
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - no free slot found to start gatttool";
@@ -406,10 +427,14 @@ sub ParrotFlowerPower_convertHexToString($) {
     }
 }
 
-sub ParrotFlowerPower_round($) {
-    $_ = shift;
+sub ParrotFlowerPower_round($$) {
+    my ( $value, $decimalPlaces ) = @_;
  
-    return ( int(($_ * 10000) + 0.5) / 10000 );
+    if ( "" ne $value ) {
+        return ( int(($value * (10**$decimalPlaces) + 0.5) / (10**$decimalPlaces) );
+    } else {
+        return "";
+    }
 }
 
 sub ParrotFlowerPower_BlockingDone($) {
