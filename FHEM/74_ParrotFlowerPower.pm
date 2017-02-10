@@ -302,7 +302,7 @@ sub ParrotFlowerPower_callGatttool($$) {
             sleep 1;
             $loop++;
         } else {
-            break;
+            last;
         }
     }
     while ( $loop < 60 );
@@ -431,7 +431,7 @@ sub ParrotFlowerPower_round($$) {
     my ( $value, $decimalPlaces ) = @_;
  
     if ( "" ne $value ) {
-        return ( int(($value * (10**$decimalPlaces) + 0.5) / (10**$decimalPlaces) );
+        return ( int(($value * (10**$decimalPlaces) + 0.5) / (10**$decimalPlaces)) );
     } else {
         return "";
     }
