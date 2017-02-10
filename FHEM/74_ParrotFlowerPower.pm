@@ -55,7 +55,7 @@ sub ParrotFlowerPower_stateRequestTimer($);
 sub ParrotFlowerPower_Set($$@);
 sub ParrotFlowerPower_Run($);
 sub ParrotFlowerPower_BlockingRun($);
-sub ParrotFlowerPower_callGatttool($$);
+sub ParrotFlowerPower_callGatttool($$$$);
 sub ParrotFlowerPower_readSensorValue($$$);
 sub ParrotFlowerPower_convertStringToFloat($);
 sub ParrotFlowerPower_convertStringToU8($);
@@ -286,21 +286,21 @@ sub ParrotFlowerPower_Run($) {
 }
 
 sub ParrotFlowerPower_BlockingRun($) {
-    my ($string)        = @_;
-    my ($name, $mac)    = split("\\|", $string);
+    my ( $string ) = @_;
+    my ( $name, $mac, $hci, $decimalPlaces ) = split( "\\|", $string );
     
 
     Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - read data from sensor";
 
     ##### read sensor data
-    my $result = ParrotFlowerPower_callGatttool( $name, $mac );
+    my $result = ParrotFlowerPower_callGatttool( $name, $mac, $hci, $decimalPlaces );
 
     Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - read data finished: $result";
 
     return "$name|$result";
 }
 
-sub ParrotFlowerPower_callGatttool($$) {
+sub ParrotFlowerPower_callGatttool($$$$) {
     my ( $name, $mac, $hci, $decimalPlaces ) = @_;
     my $loop                = 0;
     my $isFreeSlot          = 0;
