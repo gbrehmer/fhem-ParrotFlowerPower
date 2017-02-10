@@ -432,6 +432,7 @@ sub ParrotFlowerPower_round($$) {
     my ( $value, $decimalPlaces ) = @_;
  
     if ( "" ne $value ) {
+        Log3 $name, 4, "Sub ParrotFlowerPower_round ($name) - decimalPlaces: $decimalPlaces";
         return ( int(($value * (10**$decimalPlaces) + 0.5) / (10**$decimalPlaces)) );
     } else {
         return "";
