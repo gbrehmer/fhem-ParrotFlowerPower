@@ -55,7 +55,7 @@ sub ParrotFlowerPower_stateRequestTimer($);
 sub ParrotFlowerPower_Set($$@);
 sub ParrotFlowerPower_Run($);
 sub ParrotFlowerPower_BlockingRun($);
-sub ParrotFlowerPower_callGatttool($$$$);
+sub ParrotFlowerPower_callGatttool($$);
 sub ParrotFlowerPower_readSensorValue($$$);
 sub ParrotFlowerPower_convertStringToFloat($);
 sub ParrotFlowerPower_convertStringToU8($);
@@ -107,8 +107,6 @@ sub ParrotFlowerPower_Define($$) {
     $hash->{BTMAC}          = $mac;
     $hash->{VERSION}        = $version;
     $hash->{INTERVAL}       = 3600;
-    $hash->{HCIDEVICE}      = "hci0";
-    $hash->{DECIMALPLACES}  = 4;
 
     $modules{ParrotFlowerPower}{defptr}{$hash->{BTMAC}} = $hash;
     readingsSingleUpdate( $hash, "state", "initialized", 0 );
@@ -121,7 +119,7 @@ sub ParrotFlowerPower_Define($$) {
         InternalTimer( gettimeofday() + int(rand(30)) + 15, "ParrotFlowerPower_stateRequestTimer", $hash, 0 );
     }
 
-    Log3 $name, 3, "ParrotFlowerPower ($name) - defined with BTMAC $hash->{BTMAC}";
+    Log3 $name, 3, "ParrotFlowerPower_Define ($name) - defined with BTMAC $hash->{BTMAC}";
 
     $modules{ParrotFlowerPower}{defptr}{$hash->{BTMAC}} = $hash;
     return undef;
@@ -187,28 +185,6 @@ sub ParrotFlowerPower_Attr(@) {
             Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set interval to default";
         }
     }
-    
-    if ( $attrName eq "hciDevice" ) {
-        if ( $cmd eq "set" ) {
-            $hash->{HCIDEVICE} = $attrVal;
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set hciDevice to $attrVal";
-        }
-        elsif( $cmd eq "del" ) {
-            $hash->{HCIDEVICE} = "hci0";
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set hciDevice to default";
-        }
-    }
-    
-    if ( $attrName eq "decimalPlaces" ) {
-        if ( $cmd eq "set" ) {
-            $hash->{DECIMALPLACES} = $attrVal;
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set decimalPlaces to $attrVal";
-        }
-        elsif( $cmd eq "del" ) {
-            $hash->{DECIMALPLACES} = 4;
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set decimalPlaces to default";
-        }
-    }
 
     return undef;
 }
@@ -226,7 +202,7 @@ sub ParrotFlowerPower_stateRequest($) {
         readingsSingleUpdate ( $hash, "state", "disabled", 1 );
     }
     
-    Log3 $name, 5, "Sub ParrotFlowerPower_stateRequestTimer ($name) - state request called";
+    Log3 $name, 5, "Sub ParrotFlowerPower_stateRequest ($name) - state request called";
 }
 
 sub ParrotFlowerPower_stateRequestTimer($) {
@@ -268,16 +244,14 @@ sub ParrotFlowerPower_Run($) {
     my ( $hash, $cmd )  = @_;
     my $name            = $hash->{NAME};
     my $mac             = $hash->{BTMAC};
-    my $hci             = defined($hash->{HCIDEVICE}) ? $hash->{HCIDEVICE} : "hci0";
-    my $decimalPlaces   = defined($hash->{DECIMALPLACES}) ? $hash->{DECIMALPLACES} : 4;
-
+    
     
     if ( not exists($hash->{helper}{RUNNING_PID}) ) {
         Log3 $name, 4, "Sub ParrotFlowerPower_Run ($name) - start blocking call";
     
-        readingsSingleUpdate ( $hash, "state", "read data", 1 );
+        readingsSingleUpdate( $hash, "state", "read data", 0 );
     
-        $hash->{helper}{RUNNING_PID} = BlockingCall( "ParrotFlowerPower_BlockingRun", $name."|".$mac."|".$hci."|".$decimalPlaces, 
+        $hash->{helper}{RUNNING_PID} = BlockingCall( "ParrotFlowerPower_BlockingRun", $name."|".$mac, 
                                                      "ParrotFlowerPower_BlockingDone", 60 + 120, 
                                                      "ParrotFlowerPower_BlockingAborted", $hash );
     } else {
@@ -286,25 +260,27 @@ sub ParrotFlowerPower_Run($) {
 }
 
 sub ParrotFlowerPower_BlockingRun($) {
-    my ( $string ) = @_;
-    my ( $name, $mac, $hci, $decimalPlaces ) = split( "\\|", $string );
+    my ( $string )     = @_;
+    my ( $name, $mac ) = split( "\\|", $string );
     
 
     Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - read data from sensor";
 
     ##### read sensor data
-    my $result = ParrotFlowerPower_callGatttool( $name, $mac, $hci, $decimalPlaces );
+    my $result = ParrotFlowerPower_callGatttool( $name, $mac );
 
     Log3 $name, 4, "Sub ParrotFlowerPower_BlockingRun ($name) - read data finished: $result";
 
     return "$name|$result";
 }
 
-sub ParrotFlowerPower_callGatttool($$$$) {
-    my ( $name, $mac, $hci, $decimalPlaces ) = @_;
+sub ParrotFlowerPower_callGatttool($$) {
+    my ( $name, $mac )      = @_;
     my $loop                = 0;
     my $isFreeSlot          = 0;
     my $result;
+    my $hci                 = AttrVal( $name, "hciDevice", "hci0" );
+    my $decimalPlaces       = AttrVal( $name, "decimalPlaces", 4 );
     my $deviceName          = ReadingsVal( $name, "deviceName", "" );
     my $deviceColor         = ReadingsVal( $name, "deviceColor", "" );
     my $batteryLevel        = "";
@@ -322,7 +298,7 @@ sub ParrotFlowerPower_callGatttool($$$$) {
         if ( ("" ne $result) && 
               ((("hci0" eq $hci) && (not $result =~ /\-i hci[1-9]/)) ||
                (("hci0" ne $hci) && ($result =~ /\-i $hci/))) ) {
-            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
+            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gatttool or hcitool is running. loop: $loop";
             sleep 1;
             $loop++;
         } else {
@@ -371,9 +347,9 @@ sub ParrotFlowerPower_callGatttool($$$$) {
 
 sub ParrotFlowerPower_readSensorValue($$$) {
     my ($name, $mac, $uuid ) = @_;
-    my $hci = ReadingsVal( $name, "hciDevice", "hci0" );
+    my $hci                  = AttrVal( $name, "hciDevice", "hci0" );
     my $result;
-    my $loop = 0;
+    my $loop                 = 0;
 
     
     do {
