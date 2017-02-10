@@ -265,9 +265,11 @@ sub ParrotFlowerPower_Set($$@) {
 }
 
 sub ParrotFlowerPower_Run($) {
-    my ( $hash, $cmd ) = @_;
-    my $name    = $hash->{NAME};
-    my $mac     = $hash->{BTMAC};
+    my ( $hash, $cmd )  = @_;
+    my $name            = $hash->{NAME};
+    my $mac             = $hash->{BTMAC};
+    my $hci             = defined($hash->{HCIDEVICE}) ? $hash->{HCIDEVICE} : "hci0";
+    my $decimalPlaces   = defined($hash->{DECIMALPLACES}) ? $hash->{DECIMALPLACES} : 4;
 
     
     if ( not exists($hash->{helper}{RUNNING_PID}) ) {
@@ -275,7 +277,7 @@ sub ParrotFlowerPower_Run($) {
     
         readingsSingleUpdate ( $hash, "state", "read data", 1 );
     
-        $hash->{helper}{RUNNING_PID} = BlockingCall( "ParrotFlowerPower_BlockingRun", $name."|".$mac, 
+        $hash->{helper}{RUNNING_PID} = BlockingCall( "ParrotFlowerPower_BlockingRun", $name."|".$mac."|".$hci."|".$decimalPlaces, 
                                                      "ParrotFlowerPower_BlockingDone", 60 + 120, 
                                                      "ParrotFlowerPower_BlockingAborted", $hash );
     } else {
@@ -299,12 +301,10 @@ sub ParrotFlowerPower_BlockingRun($) {
 }
 
 sub ParrotFlowerPower_callGatttool($$) {
-    my ($name, $mac)        = @_;
+    my ( $name, $mac, $hci, $decimalPlaces ) = @_;
     my $loop                = 0;
     my $isFreeSlot          = 0;
     my $result;
-    my $hci                 = defined($hash->{HCIDEVICE}) ? $hash->{HCIDEVICE} : "hci0";
-    my $decimalPlaces       = defined($hash->{DECIMALPLACES}) ? $hash->{DECIMALPLACES} : 4;
     my $deviceName          = ReadingsVal( $name, "deviceName", "" );
     my $deviceColor         = ReadingsVal( $name, "deviceColor", "" );
     my $batteryLevel        = "";
