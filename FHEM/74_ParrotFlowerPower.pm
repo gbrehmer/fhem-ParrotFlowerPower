@@ -278,6 +278,7 @@ sub ParrotFlowerPower_BlockingRun($) {
 sub ParrotFlowerPower_callGatttool($$) {
     my ($name, $mac)        = @_;
     my $loop                = 0;
+    my $isFreeSlot          = 0;
     my $result;
     my $hci                 = ReadingsVal( $name, "hciDevice", "hci0" );
     my $decimalPlaces       = ReadingsVal( $name, "decimalPlaces", 4 );
@@ -299,16 +300,15 @@ sub ParrotFlowerPower_callGatttool($$) {
               ((("hci0" eq $hci) && (not $result =~ /\-i hci[1-9]/)) ||
                (("hci0" ne $hci) && ($result =~ /\-i $hci/))) ) {
             Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
-            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - result: $result ### hci: $hci";
             sleep 1;
             $loop++;
         } else {
-            last;
+            $isFreeSlot = 1;
         }
     }
-    while ( $loop < 60 );
+    while ( $loop < 60 && 0 == $isFreeSlot );
     
-    if ( $loop < 60 ) {    
+    if ( $isFreeSlot ) {    
         #### Read Sensor Data
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - run gatttool";
 
