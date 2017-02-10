@@ -296,8 +296,8 @@ sub ParrotFlowerPower_callGatttool($$) {
         # hci0: only hci1-9 is allowed for gatttool or hcitool
         # hci1-9: same interface is not allowed for gatttool or hcitool
         if ( ("" ne $result) && 
-              (("hci0" eq $hci) && (not $result =~ /\-i hci[1-9]/)) ||
-              (("hci0" ne $hci) && ($result =~ /\-i $hci/)) ) {
+              ((("hci0" eq $hci) && (not $result =~ /\-i hci[1-9]/)) ||
+               (("hci0" ne $hci) && ($result =~ /\-i $hci/))) ) {
             Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
             sleep 1;
             $loop++;
