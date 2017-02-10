@@ -299,6 +299,7 @@ sub ParrotFlowerPower_callGatttool($$) {
               ((("hci0" eq $hci) && (not $result =~ /\-i hci[1-9]/)) ||
                (("hci0" ne $hci) && ($result =~ /\-i $hci/))) ) {
             Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - check if gattool or hcitool is running. loop: $loop";
+            Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - result: $result ### hci: $hci";
             sleep 1;
             $loop++;
         } else {
