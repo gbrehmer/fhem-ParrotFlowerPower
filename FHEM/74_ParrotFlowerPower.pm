@@ -62,6 +62,7 @@ sub ParrotFlowerPower_convertStringToU8($);
 sub ParrotFlowerPower_convertStringToU16($);
 sub ParrotFlowerPower_convertHexToString($);
 sub ParrotFlowerPower_round($$);
+sub ParrotFlowerPower_convertSunlight($);
 sub ParrotFlowerPower_BlockingDone($);
 sub ParrotFlowerPower_BlockingAborted($);
 
@@ -83,8 +84,8 @@ sub ParrotFlowerPower_Initialize($) {
                           "decimalPlaces:1,2,3,4,5,6 ".
                           "minSoilMoisture ".
                           "maxSoilMoisture ".
-                          "minTemperature ".
-                          "maxTemperature ".
+                          "minAirTemperature ".
+                          "maxAirTemperature ".
                           "minSunlight ".
                           "maxSunlight ".
                           $readingFnAttributes;
@@ -336,7 +337,7 @@ sub ParrotFlowerPower_callGatttool($$) {
         $calibAirTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0a-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibAirTemperature: $calibAirTemperature";
         
-        $calibSunlight = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
+        $calibSunlight = ParrotFlowerPower_round( ParrotFlowerPower_convertSunlight( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces ) );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSunlight: $calibSunlight";
     } else {
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - no free slot found to start gatttool";
@@ -437,10 +438,26 @@ sub ParrotFlowerPower_round($$) {
     }
 }
 
+sub ParrotFlowerPower_convertSunlight($) {
+    $_ = shift;
+    
+    if ( "" ne $value ) {
+        return ( (($_ * 1000000) / (3600 * 12)) * 54);
+    } else {
+        return "";
+    }
+}
+
 sub ParrotFlowerPower_BlockingDone($) {
     my ($string)            = @_;
     my ( $name, $deviceName, $deviceColor, $batteryLevel, $calibSoilMoisture, $calibAirTemperature, $calibSunlight ) = split( "\\|", $string );
     my $hash                = $defs{$name};
+    my $minSoilMoisture     = AttrVal( $name, "minSoilMoisture", 0 );
+    my $maxSoilMoisture     = AttrVal( $name, "maxSoilMoisture", 100 );
+    my $minAirTemperature   = AttrVal( $name, "minAirTemperature", -50 );
+    my $maxAirTemperature   = AttrVal( $name, "maxAirTemperature", 100 );
+    my $minSunlight         = AttrVal( $name, "minSunlight", 0 );
+    my $maxSunlight         = AttrVal( $name, "minSunlight", 200000 );
 
 
     delete($hash->{helper}{RUNNING_PID});
@@ -448,19 +465,53 @@ sub ParrotFlowerPower_BlockingDone($) {
     Log3 $name, 4, "Sub ParrotFlowerPower_BlockingDone ($name) - helper disabled. abort" if ( $hash->{helper}{DISABLED} );
     return if ( $hash->{helper}{DISABLED} );
 
-    readingsBeginUpdate( $hash );
+    if ( ("" ne $deviceName) && ("" ne $deviceColor) && ("" ne $batteryLevel) &&
+         ("" ne $calibSoilMoisture) && ("" ne $calibAirTemperature) && ("" ne $calibSunlight) )
+    {
+        readingsBeginUpdate( $hash );
 
-    readingsBulkUpdate( $hash, "deviceName", $deviceName );
-    readingsBulkUpdate( $hash, "deviceColor", $deviceColor );
-    readingsBulkUpdate( $hash, "battery", (("" eq $batteryLevel) || ($batteryLevel > 15)) ? "ok" : "low" );
-    readingsBulkUpdate( $hash, "batteryLevel", $batteryLevel );
-    readingsBulkUpdate( $hash, "soilMoisture", $calibSoilMoisture );
-    readingsBulkUpdate( $hash, "airTemperature", $calibAirTemperature );
-    readingsBulkUpdate( $hash, "sunlight", $calibSunlight );
-    readingsBulkUpdate( $hash, "state", "M: ".$calibSoilMoisture." % T: ".$calibAirTemperature." °C L: ".$calibSunlight." lux B: ".$batteryLevel." %" );
-    #readingsBulkUpdate( $hash, "state", "active" );
+        readingsBulkUpdate( $hash, "deviceName", $deviceName );
+        readingsBulkUpdate( $hash, "deviceColor", $deviceColor );
+        readingsBulkUpdate( $hash, "battery", ($batteryLevel > 15 ? "ok" : "low" );
+        readingsBulkUpdate( $hash, "batteryLevel", $batteryLevel );
+        readingsBulkUpdate( $hash, "soilMoisture", $calibSoilMoisture );
+        readingsBulkUpdate( $hash, "airTemperature", $calibAirTemperature );
+        readingsBulkUpdate( $hash, "sunlight", $calibSunlight );
         
-    readingsEndUpdate( $hash, 1 );
+        if ( $calibSoilMoisture < $minSoilMoisture ) {
+            readingsBulkUpdate( $hash, "stateSoilMoisture", "low" );
+        }
+        elsif ( $calibSoilMoisture > $maxSoilMoisture ) {
+            readingsBulkUpdate( $hash, "stateSoilMoisture", "high" );
+        }
+        else {
+            readingsBulkUpdate( $hash, "stateSoilMoisture", "ok" );
+        }
+        
+        if ( $calibAirTemperature < $minAirTemperature ) {
+            readingsBulkUpdate( $hash, "stateAirTemperature", "low" );
+        }
+        elsif ( $calibAirTemperature > $maxAirTemperature ) {
+            readingsBulkUpdate( $hash, "stateAirTemperature", "high" );
+        }
+        else {
+            readingsBulkUpdate( $hash, "stateAirTemperature", "ok" );
+        }
+        
+        if ( $calibSunlight < $minSunlight ) {
+            readingsBulkUpdate( $hash, "stateSunlight", "low" );
+        }
+        elsif ( $calibSunlight > $maxSunlight ) {
+            readingsBulkUpdate( $hash, "stateSunlight", "high" );
+        }
+        else {
+            readingsBulkUpdate( $hash, "stateSunlight", "ok" );
+        }
+        
+        readingsBulkUpdate( $hash, "state", "M: ".$calibSoilMoisture." % T: ".$calibAirTemperature." °C L: ".$calibSunlight." lux B: ".$batteryLevel." %" );
+            
+        readingsEndUpdate( $hash, 1 );
+    }
 
     Log3 $name, 4, "Sub ParrotFlowerPower_BlockingDone ($name) - done";
 }
@@ -516,7 +567,7 @@ sub ParrotFlowerPower_BlockingAborted($) {
   <a name="ParrotFlowerPowerreadings"></a>
   <b>Readings</b>
   <ul>
-    <li>state - status of the flower power sensor or error message if any errors.</li>
+    <li>state - state of the flower power sensor or error message if there are any errors.</li>
     <li>deviceName - name of the Parrot Flower Power sensor.</li>
     <li>deviceColor - color of the Parrot Flower Power sensor.</li>
     <li>battery - current battery state (depends on batteryLevel).</li>
@@ -524,6 +575,9 @@ sub ParrotFlowerPower_BlockingAborted($) {
     <li>soilMoisture - current soil moisture.</li>
     <li>airTemperature - current air temperature.</li>
     <li>sunlight - current sunlight.</li>
+    <li>stateSoilMoisture - state depends on attributes minSoilMoisture/maxSoilMoisture and can be ok, low or high.</li>
+    <li>stateAirTemperature - state depends on attributes minAirTemperature/maxAirTemperature and can be ok, low or high.</li>
+    <li>stateSunlight - state depends on attributes minSunlight/maxSunlight and can be ok, low or high.</li>
   </ul>
   <br><br>
   <a name="ParrotFlowerPowerset"></a>
@@ -540,6 +594,13 @@ sub ParrotFlowerPower_BlockingAborted($) {
     <li>disabledForIntervals - disables the Parrot Flower Power device for an interval (example: 00:00-06:00)</li>
     <li>interval - interval in seconds for statusRequest (default: 3600s)</li>
     <li>hciDevice - bluetooth device (default: hci0)</li>
+    <li>decimalPlaces - decimal places for all float values (default: 4)</li>
+    <li>minSoilMoisture - minimum allowed soil moisture (affects stateSoilMoisture)</li>
+    <li>maxSoilMoisture - maximum allowed soil moisture (affects stateSoilMoisture)</li>
+    <li>minAirTemperature - minimum allowed air temperature (affects stateAirTemperature)</li>
+    <li>maxAirTemperature - maximum allowed air temperature (affects stateAirTemperature)</li>
+    <li>minSunlight - minimum allowed sunlight (affects stateSunlight)</li>
+    <li>maxSunlight - maximum allowed sunlight (affects stateSunlight)</li>
     <br>
   </ul>
 </ul>
@@ -579,7 +640,10 @@ sub ParrotFlowerPower_BlockingAborted($) {
     <li>batteryLevel - F&uuml;llstand der Batterie.</li>
     <li>soilMoisture - Bodenfeuchtigkeit.</li>
     <li>airTemperature - Lufttemperatur.</li>
-    <li>sunlight - Licht.</li>
+    <li>sunlight - Sonnenlicht.</li>
+    <li>stateSoilMoisture - Status h&auml;ngt von den Attributen minSoilMoisture/maxSoilMoisture ab und kann die Werte ok, low or high annehmen.</li>
+    <li>stateAirTemperature - Status h&auml;ngt von den Attributen minAirTemperature/maxAirTemperature ab und kann die Werte ok, low or high annehmen.</li>
+    <li>stateSunlight - Status h&auml;ngt von den Attributen minSunlight/maxSunlight ab und kann die Werte ok, low or high annehmen.</li>
   </ul>
   <br><br>
   <a name="ParrotFlowerPowerset"></a>
@@ -596,6 +660,13 @@ sub ParrotFlowerPower_BlockingAborted($) {
     <li>disabledForIntervals - deaktiviert das Parrot Flower Power Ger&auml;t f&uuml;r eine bestimmte Zeit (Beispiel: 00:00-06:00)</li>
     <li>interval - Intervall in Sekunden f&uuml;r den statusRequest (Voreinstellung: 3600s)</li>
     <li>hciDevice - Bluetooth Ger&auml;t (Voreinstellung: hci0)</li>
+    <li>decimalPlaces - Nachkommastellen f&uuml;r alle Flie&szlig;kommazahlen (Voreinstellung: 4)</li>
+    <li>minSoilMoisture - minimal erlaubte Bodenfeuchtigkeit (beeinflusst stateSoilMoisture)</li>
+    <li>maxSoilMoisture - maximal erlaubte Bodenfeuchtigkeit (beeinflusst stateSoilMoisture)</li>
+    <li>minAirTemperature - minimal erlaubte Lufttemperatur (beeinflusst stateAirTemperature)</li>
+    <li>maxAirTemperature - maximal erlaubte Lufttemperatur (beeinflusst stateAirTemperature)</li>
+    <li>minSunlight - minimal erlaubtes Sonnenlicht (beeinflusst stateSunlight)</li>
+    <li>maxSunlight - maximal erlaubtes Sonnenlicht (beeinflusst stateSunlight)</li>
     <br>
   </ul>
 </ul>

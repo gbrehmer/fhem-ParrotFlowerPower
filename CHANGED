@@ -1,4 +1,7 @@
 - attribute decimalPlaces (1-6 decimal places are possible) added
 - detection of running gatttool and hcitool improved
 - hciDevice attribute fixed
+- sunlight value mol/(m * m)/d converted to lux
+- attributes for min/max SoilMoisture, AirTemperature and Sunlight added
+- 3 new Readings added: stateSoilMoisture, stateAirTemperature and stateSunlight added (states can be: ok, low or high)
 - some small bugfixes
