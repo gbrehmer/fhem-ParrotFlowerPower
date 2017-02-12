@@ -472,7 +472,7 @@ sub ParrotFlowerPower_BlockingDone($) {
 
         readingsBulkUpdate( $hash, "deviceName", $deviceName );
         readingsBulkUpdate( $hash, "deviceColor", $deviceColor );
-        readingsBulkUpdate( $hash, "battery", ($batteryLevel > 15 ? "ok" : "low" );
+        readingsBulkUpdate( $hash, "battery", ($batteryLevel > 15 ? "ok" : "low") );
         readingsBulkUpdate( $hash, "batteryLevel", $batteryLevel );
         readingsBulkUpdate( $hash, "soilMoisture", $calibSoilMoisture );
         readingsBulkUpdate( $hash, "airTemperature", $calibAirTemperature );
