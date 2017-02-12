@@ -1,2 +1,2 @@
 DIR FHEM
-UPD 2017-02-12_23:48:00 25167 FHEM/74_ParrotFlowerPower.pm
+UPD 2017-02-12_23:57:00 25163 FHEM/74_ParrotFlowerPower.pm
