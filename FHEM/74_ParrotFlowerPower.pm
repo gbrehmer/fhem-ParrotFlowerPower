@@ -457,7 +457,7 @@ sub ParrotFlowerPower_BlockingDone($) {
     my $minAirTemperature   = AttrVal( $name, "minAirTemperature", -50 );
     my $maxAirTemperature   = AttrVal( $name, "maxAirTemperature", 100 );
     my $minSunlight         = AttrVal( $name, "minSunlight", 0 );
-    my $maxSunlight         = AttrVal( $name, "minSunlight", 200000 );
+    my $maxSunlight         = AttrVal( $name, "maxSunlight", 200000 );
 
 
     delete($hash->{helper}{RUNNING_PID});
