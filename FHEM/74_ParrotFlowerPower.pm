@@ -34,7 +34,7 @@ use POSIX;
 
 use Blocking;
 
-my $version = "0.0.3";
+my $version = "0.0.4";
 my %colors = ( 1 => "brown",
                2 => "esmerald",
                3 => "lemon",
@@ -442,7 +442,8 @@ sub ParrotFlowerPower_convertSunlight($) {
     $_ = shift;
     
     if ( "" ne $_ ) {
-        return ( (($_ * 1000000) / (3600 * 12)) * 54);
+        $_ = ((($_ * 1000000.0) / (3600.0 * 12.0)) * 54.0) - 125.0;
+        return ( (3.742962546 * $_) + ((496.8885739 * $_) / ($_ + 3.714614273)) );
     } else {
         return "";
     }

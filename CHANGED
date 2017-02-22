@@ -1,3 +1,5 @@
+  - sunlight calculation enhanced
+- v0.0.3
   - attribute decimalPlaces (1-6 decimal places are possible) added
   - detection of running gatttool and hcitool improved
   - hciDevice attribute fixed
