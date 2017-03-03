@@ -112,17 +112,14 @@ sub ParrotFlowerPower_Define($$) {
     $modules{ParrotFlowerPower}{defptr}{$hash->{BTMAC}} = $hash;
     readingsSingleUpdate( $hash, "state", "initialized", 0 );
     
-    RemoveInternalTimer( $hash );
-
     if ( $init_done ) {
         ParrotFlowerPower_stateRequestTimer( $hash );
     } else {
         InternalTimer( gettimeofday() + int(rand(30)) + 15, "ParrotFlowerPower_stateRequestTimer", $hash, 0 );
     }
 
-    Log3 $name, 3, "ParrotFlowerPower_Define ($name) - defined with BTMAC $hash->{BTMAC}";
+    Log3 $name, 3, "Sub ParrotFlowerPower_Define ($name) - defined with BTMAC $hash->{BTMAC}";
 
-    $modules{ParrotFlowerPower}{defptr}{$hash->{BTMAC}} = $hash;
     return undef;
 }
 
@@ -147,43 +144,43 @@ sub ParrotFlowerPower_Attr(@) {
 
     if ( $attrName eq "disable" ) {
         if ( $cmd eq "set" and $attrVal eq "1" ) {
-            readingsSingleUpdate ( $hash, "state", "disabled", 1 );
+            readingsSingleUpdate( $hash, "state", "disabled", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - disabled";
+            Log3 $name, 3, "Sub ParrotFlowerPower_Attr ($name) - disabled";
         }
         elsif ( $cmd eq "del" ) {
-            readingsSingleUpdate ( $hash, "state", "active", 1 );
+            readingsSingleUpdate( $hash, "state", "active", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - enabled";
+            Log3 $name, 3, "Sub ParrotFlowerPower_Attr ($name) - enabled";
         }
     }
 
     if ( $attrName eq "disabledForIntervals" ) {
         if ( $cmd eq "set" ) {
-            readingsSingleUpdate ( $hash, "state", "suspended", 1 );
+            readingsSingleUpdate( $hash, "state", "suspended", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - disabledForIntervals";
+            Log3 $name, 3, "Sub ParrotFlowerPower_Attr ($name) - disabledForIntervals";
         }
         elsif ( $cmd eq "del" ) {
-            readingsSingleUpdate ( $hash, "state", "active", 1 );
+            readingsSingleUpdate( $hash, "state", "active", 1 );
             
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - enabled";
+            Log3 $name, 3, "Sub ParrotFlowerPower_Attr ($name) - enabled";
         }
     }
 
     if ( $attrName eq "interval" ) {
         if ( $cmd eq "set" ) {
             if ( $attrVal < 900 ) {
-                Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - interval too small, please use something >= 900 (sec), default is 3600 (sec)";
+                Log3 $name, 3, "Sub ParrotFlowerPower_Attr ($name) - interval too small, please use something >= 900 (sec), default is 3600 (sec)";
                 return "interval too small, please use something >= 900 (sec), default is 3600 (sec)";
             } else {
                 $hash->{INTERVAL} = $attrVal;
-                Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set interval to $attrVal";
+                Log3 $name, 3, "Sub ParrotFlowerPower_Attr ($name) - set interval to $attrVal";
             }
         }
         elsif( $cmd eq "del" ) {
             $hash->{INTERVAL} = 3600;
-            Log3 $name, 3, "ParrotFlowerPower_Attr ($name) - set interval to default";
+            Log3 $name, 3, "Sub ParrotFlowerPower_Attr ($name) - set interval to default";
         }
     }
 
@@ -196,11 +193,11 @@ sub ParrotFlowerPower_stateRequest($) {
 
 
     if ( !IsDisabled($name) ) {
-        readingsSingleUpdate ( $hash, "state", "active", 1 );
+        readingsSingleUpdate( $hash, "state", "active", 1 );
 
         ParrotFlowerPower_Run( $hash );
     } else {
-        readingsSingleUpdate ( $hash, "state", "disabled", 1 );
+        readingsSingleUpdate( $hash, "state", "disabled", 1 );
     }
     
     Log3 $name, 5, "Sub ParrotFlowerPower_stateRequest ($name) - state request called";
@@ -211,14 +208,12 @@ sub ParrotFlowerPower_stateRequestTimer($) {
     my $name        = $hash->{NAME};
 
 
-    RemoveInternalTimer($hash);
-
     if ( !IsDisabled($name) ) {
-        readingsSingleUpdate ( $hash, "state", "active", 1 );
+        readingsSingleUpdate( $hash, "state", "active", 1 );
 
         ParrotFlowerPower_Run( $hash );
     } else {
-        readingsSingleUpdate ( $hash, "state", "disabled", 1 );
+        readingsSingleUpdate( $hash, "state", "disabled", 1 );
     }
 
     InternalTimer( gettimeofday() + $hash->{INTERVAL} + int(rand(30)), "ParrotFlowerPower_stateRequestTimer", $hash, 1 );
@@ -591,8 +586,8 @@ sub ParrotFlowerPower_BlockingAborted($) {
   <a name="ParrotFlowerPowerattribut"></a>
   <b>Attributes</b>
   <ul>
-    <li>disable - disables the Parrot Flower Power device</li>
-    <li>disabledForIntervals - disables the Parrot Flower Power device for an interval (example: 00:00-06:00)</li>
+    <li>disable - disable the Parrot Flower Power device</li>
+    <li>disabledForIntervals - disable the Parrot Flower Power device for an interval (example: 00:00-06:00)</li>
     <li>interval - interval in seconds for statusRequest (default: 3600s)</li>
     <li>hciDevice - bluetooth device (default: hci0)</li>
     <li>decimalPlaces - decimal places for all float values (default: 4)</li>
