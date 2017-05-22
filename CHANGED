@@ -1,5 +1,7 @@
   - sunlight calculation enhanced
   - code cleanup and small bugfixes
+  - soil temp support
+  - decrease minimum check interval
 - v0.0.3
   - attribute decimalPlaces (1-6 decimal places are possible) added
   - detection of running gatttool and hcitool improved
