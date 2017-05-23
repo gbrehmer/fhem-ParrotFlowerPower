@@ -282,7 +282,7 @@ sub ParrotFlowerPower_callGatttool($$) {
     my $batteryLevel        = "";
     my $calibSoilMoisture   = "";
     my $calibAirTemperature = "";
-    my $calibSoilTemperature = "";
+    my $soilTemperature = "";
     my $calibSunlight       = "";
 
 
@@ -333,8 +333,8 @@ sub ParrotFlowerPower_callGatttool($$) {
         $calibAirTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0a-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibAirTemperature: $calibAirTemperature";
 
-        $calibSoilTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa03-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
-        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSoilTemperature: $calibSoilTemperature";
+        $soilTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertHexToString( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa03-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSoilTemperature: $soilTemperature";
 
         $calibSunlight = ParrotFlowerPower_round( ParrotFlowerPower_convertSunlight( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSunlight: $calibSunlight";
@@ -342,7 +342,7 @@ sub ParrotFlowerPower_callGatttool($$) {
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - no free slot found to start gatttool";
     }
 
-    return "$deviceName|$deviceColor|$batteryLevel|$calibSoilMoisture|$calibAirTemperature|$calibSoilTemperature|$calibSunlight";
+    return "$deviceName|$deviceColor|$batteryLevel|$calibSoilMoisture|$calibAirTemperature|$soilTemperature|$calibSunlight";
 }
 
 sub ParrotFlowerPower_readSensorValue($$$) {
@@ -449,7 +449,7 @@ sub ParrotFlowerPower_convertSunlight($) {
 
 sub ParrotFlowerPower_BlockingDone($) {
     my ($string)            = @_;
-    my ( $name, $deviceName, $deviceColor, $batteryLevel, $calibSoilMoisture, $calibAirTemperature, $calibSoilTemperature, $calibSunlight ) = split( "\\|", $string );
+    my ( $name, $deviceName, $deviceColor, $batteryLevel, $calibSoilMoisture, $calibAirTemperature, $soilTemperature, $calibSunlight ) = split( "\\|", $string );
     my $hash                = $defs{$name};
     my $minSoilMoisture     = AttrVal( $name, "minSoilMoisture", 0 );
     my $maxSoilMoisture     = AttrVal( $name, "maxSoilMoisture", 100 );
@@ -465,7 +465,7 @@ sub ParrotFlowerPower_BlockingDone($) {
     return if ( $hash->{helper}{DISABLED} );
 
     if ( ("" ne $deviceName) && ("" ne $deviceColor) && ("" ne $batteryLevel) &&
-         ("" ne $calibSoilMoisture) && ("" ne $calibAirTemperature) && ("" ne $calibSoilTemperature) && ("" ne $calibSunlight) )
+         ("" ne $calibSoilMoisture) && ("" ne $calibAirTemperature) && ("" ne $soilTemperature) && ("" ne $calibSunlight) )
     {
         readingsBeginUpdate( $hash );
 
@@ -475,7 +475,7 @@ sub ParrotFlowerPower_BlockingDone($) {
         readingsBulkUpdate( $hash, "batteryLevel", $batteryLevel );
         readingsBulkUpdate( $hash, "soilMoisture", $calibSoilMoisture );
         readingsBulkUpdate( $hash, "airTemperature", $calibAirTemperature );
-        readingsBulkUpdate( $hash, "soilTemperature", $calibSoilTemperature );
+        readingsBulkUpdate( $hash, "soilTemperature", $soilTemperature );
         readingsBulkUpdate( $hash, "sunlight", $calibSunlight );
 
         if ( $calibSoilMoisture < $minSoilMoisture ) {
@@ -498,10 +498,10 @@ sub ParrotFlowerPower_BlockingDone($) {
             readingsBulkUpdate( $hash, "stateAirTemperature", "ok" );
         }
 
-        if ( $calibSoilTemperature < $minTemperature ) {
+        if ( $soilTemperature < $minTemperature ) {
             readingsBulkUpdate( $hash, "stateSoilTemperature", "low" );
         }
-        elsif ( $calibSoilTemperature > $maxTemperature ) {
+        elsif ( $soilTemperature > $maxTemperature ) {
             readingsBulkUpdate( $hash, "stateSoilTemperature", "high" );
         }
         else {
