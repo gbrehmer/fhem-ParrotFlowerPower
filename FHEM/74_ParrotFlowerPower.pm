@@ -333,8 +333,8 @@ sub ParrotFlowerPower_callGatttool($$) {
         $calibAirTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0a-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibAirTemperature: $calibAirTemperature";
 
-        $soilTemperature = ParrotFlowerPower_round( ParrotFlowerPower_convertHexToString( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa03-84a8-11e2-afba-0002a5d5c51b" ) ), $decimalPlaces );
-        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSoilTemperature: $soilTemperature";
+        $soilTemperature = ParrotFlowerPower_convertStringToU16( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa03-84a8-11e2-afba-0002a5d5c51b" ) );
+        Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. soilTemperature: $soilTemperature";
 
         $calibSunlight = ParrotFlowerPower_round( ParrotFlowerPower_convertSunlight( ParrotFlowerPower_convertStringToFloat( ParrotFlowerPower_readSensorValue( $name, $mac, "39e1fa0b-84a8-11e2-afba-0002a5d5c51b" ) ) ), $decimalPlaces );
         Log3 $name, 4, "Sub ParrotFlowerPower_callGatttool ($name) - processing gatttool response. calibSunlight: $calibSunlight";
